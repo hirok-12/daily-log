@@ -15,8 +15,7 @@
 		{
 			"binding": "DB",
 			"database_name": "daily-log-db",
-			// デプロイ前に `wrangler d1 create daily-log-db` で発行されたIDに置き換える
-			"database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID",
+			"database_id": "3627c4cc-a4b8-4c3f-832e-c80ec5ec855d",
 			"migrations_dir": "migrations"
 		}
 	]

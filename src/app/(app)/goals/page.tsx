@@ -1,0 +1,135 @@
+import GoalMarks, { RESULT_LABEL } from "@/components/GoalMarks";
+import { addGoal } from "@/app/actions";
+import { formatJa, todayJst } from "@/lib/dates";
+import { getAllGoals } from "@/lib/queries";
+import type { GoalResult } from "@/db/schema";
+
+export const dynamic = "force-dynamic";
+
+export default async function GoalsPage() {
+  const today = todayJst();
+  const allGoals = await getAllGoals();
+
+  const upcoming = allGoals
+    .filter((g) => g.targetDate >= today)
+    .sort((a, b) => a.targetDate.localeCompare(b.targetDate));
+  const past = allGoals.filter((g) => g.targetDate < today);
+
+  const judged = allGoals.filter((g) => g.result !== "pending");
+  const doneCount = allGoals.filter((g) => g.result === "done").length;
+  const partialCount = allGoals.filter((g) => g.result === "partial").length;
+  const rate =
+    judged.length > 0
+      ? Math.round(((doneCount + partialCount * 0.5) / judged.length) * 100)
+      : null;
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-end justify-between rise">
+        <h2 className="font-display text-3xl font-bold tracking-wider">目標</h2>
+        {rate !== null && (
+          <div className="text-right">
+            <p className="text-xs tracking-[0.3em] text-ink-faint mb-1">達成率</p>
+            <p className="font-display text-3xl font-bold text-matcha">
+              {rate}
+              <span className="text-sm text-ink-soft ml-1">%</span>
+            </p>
+          </div>
+        )}
+      </div>
+
+      <section className="card px-6 py-5 rise rise-1">
+        <h3 className="font-display font-bold tracking-wider mb-4 stamp-dot">
+          明日の目標を立てる
+        </h3>
+        <form action={addGoal} className="flex flex-col sm:flex-row gap-3">
+          <input
+            type="date"
+            name="targetDate"
+            defaultValue={today}
+            required
+            className="field sm:w-44"
+          />
+          <input
+            type="text"
+            name="title"
+            placeholder="例）meetupで一人と連絡先交換する"
+            required
+            className="field flex-1"
+          />
+          <button type="submit" className="btn-primary justify-center shrink-0">
+            立てる
+          </button>
+        </form>
+      </section>
+
+      <section className="space-y-3 rise rise-2">
+        <h3 className="font-display font-bold tracking-wider stamp-dot">
+          これから
+        </h3>
+        {upcoming.length === 0 ? (
+          <p className="text-sm text-ink-faint py-4">
+            予定されている目標はありません
+          </p>
+        ) : (
+          upcoming.map((goal) => (
+            <div
+              key={goal.id}
+              className="card px-6 py-4 flex items-center justify-between gap-4"
+            >
+              <div>
+                <p className="text-xs text-ink-faint mb-0.5">
+                  {formatJa(goal.targetDate)}
+                </p>
+                <p className="text-[0.95rem]">{goal.title}</p>
+              </div>
+              <GoalMarks goal={goal} />
+            </div>
+          ))
+        )}
+      </section>
+
+      <section className="space-y-3 rise rise-3">
+        <h3 className="font-display font-bold tracking-wider stamp-dot">
+          これまで
+        </h3>
+        {past.length === 0 ? (
+          <p className="text-sm text-ink-faint py-4">まだ記録がありません</p>
+        ) : (
+          past.map((goal) => (
+            <div
+              key={goal.id}
+              className="card px-6 py-4 flex items-center justify-between gap-4"
+            >
+              <div className="flex items-baseline gap-3 min-w-0">
+                <span
+                  className={`font-display text-lg shrink-0 ${
+                    goal.result === "done"
+                      ? "text-matcha"
+                      : goal.result === "partial"
+                        ? "text-kin"
+                        : goal.result === "missed"
+                          ? "text-shu"
+                          : "text-ink-faint"
+                  }`}
+                >
+                  {RESULT_LABEL[goal.result as GoalResult]}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs text-ink-faint mb-0.5">
+                    {formatJa(goal.targetDate)}
+                  </p>
+                  <p className="text-[0.95rem]">{goal.title}</p>
+                  {goal.note && (
+                    <p className="text-xs text-ink-soft mt-1">{goal.note}</p>
+                  )}
+                </div>
+              </div>
+              <GoalMarks goal={goal} />
+            </div>
+          ))
+        )}
+      </section>
+    </div>
+  );
+}

@@ -1,0 +1,4 @@
+# ローカル開発用のシークレット（本番は `wrangler secret put <NAME>` で設定）
+APP_PASSWORD=dev-password
+AUTH_SECRET=dev-secret-change-me-1234567890
+ANTHROPIC_API_KEY=sk-ant-REPLACE_ME

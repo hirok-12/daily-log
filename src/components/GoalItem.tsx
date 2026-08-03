@@ -126,6 +126,8 @@ export default function GoalItem({
             placeholder="一言コメント（所感）"
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
+              // IME変換確定のEnter（isComposing / keyCode 229）では保存しない
+              if (e.nativeEvent.isComposing || e.keyCode === 229) return;
               if (e.key === "Enter") saveNote();
               if (e.key === "Escape") setEditing(false);
             }}

@@ -41,24 +41,34 @@ export default async function GoalsPage() {
         <h3 className="font-display font-bold tracking-wider mb-4 stamp-dot">
           明日の目標を立てる
         </h3>
-        <form action={addGoal} className="flex flex-col sm:flex-row gap-3">
-          <input
-            type="date"
-            name="targetDate"
-            defaultValue={today}
-            required
-            className="field sm:w-44"
-          />
-          <input
-            type="text"
-            name="title"
-            placeholder="例）meetupで一人と連絡先交換する"
-            required
-            className="field flex-1"
-          />
-          <button type="submit" className="btn-primary justify-center shrink-0">
-            立てる
-          </button>
+        <form action={addGoal} className="space-y-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input
+              type="date"
+              name="targetDate"
+              defaultValue={today}
+              required
+              className="field sm:max-w-44"
+            />
+            <input
+              type="text"
+              name="title"
+              placeholder="例）meetupで一人と連絡先交換する"
+              required
+              className="field flex-1"
+            />
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input
+              type="text"
+              name="note"
+              placeholder="一言コメント・意気込み（任意）"
+              className="field flex-1"
+            />
+            <button type="submit" className="btn-primary justify-center shrink-0">
+              立てる
+            </button>
+          </div>
         </form>
       </section>
 

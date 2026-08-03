@@ -88,6 +88,7 @@ export async function saveEntry(date: string, formData: FormData) {
 export async function addGoal(formData: FormData) {
   const title = formData.get("title");
   const targetDate = formData.get("targetDate");
+  const note = formData.get("note");
   if (
     typeof title !== "string" ||
     !title.trim() ||
@@ -97,7 +98,11 @@ export async function addGoal(formData: FormData) {
     return;
   }
   const db = await getDb();
-  await db.insert(goals).values({ title: title.trim(), targetDate });
+  await db.insert(goals).values({
+    title: title.trim(),
+    targetDate,
+    note: typeof note === "string" && note.trim() ? note.trim() : null,
+  });
   revalidatePath("/goals");
   revalidatePath("/");
 }

@@ -5,10 +5,17 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
-import { entries, goals, GOAL_RESULTS, type GoalResult } from "@/db/schema";
+import {
+  aiSummaries,
+  entries,
+  goals,
+  GOAL_RESULTS,
+  type GoalResult,
+} from "@/db/schema";
 import { createSessionToken, sessionCookie } from "@/lib/auth";
 import { getDb, getEnv } from "@/lib/db";
-import { formatJa } from "@/lib/dates";
+import { formatJa, resolveReviewRange, todayJst } from "@/lib/dates";
+import { getEntriesInRange, getGoalsInRange } from "@/lib/queries";
 
 // ---------- 認証 ----------
 
@@ -199,5 +206,122 @@ export async function generateAiReview(
   } catch (e) {
     console.error("AI review failed:", e);
     return { error: "AIレビューの生成に失敗しました。時間をおいて再試行してください" };
+  }
+}
+
+// ---------- AI週次・月次まとめ ----------
+
+const SUMMARY_SYSTEM = `あなたは経験豊富なコーチ・カウンセラーです。クライアントが毎日書いている成長日記の一定期間分（1週間または1ヶ月）を読み、その期間全体を俯瞰した振り返りレポートを作成します。
+
+姿勢:
+- 個々の日記の要約ではなく、期間全体を通したパターン・変化・成長を見つけて言語化する
+- うまくいったことや学びに繰り返し現れるテーマがあれば指摘する
+- 「自分を責めたこと」に傾向があれば、認知行動療法の視点でバランスの取れた見方を添える
+- 目標の達成状況とその所感コメントから、目標の立て方・動き方の傾向を読み取る
+- 温かく具体的に。抽象的な励ましではなく、日記の記述を引用しながら承認する
+
+出力形式（Markdownで、全体で500〜800字程度）:
+1. **この期間のハイライト** — 期間全体を象徴する出来事や変化を2〜3点
+2. **見えてきたパターン** — うまくいったこと・学び・つながりに共通するテーマ
+3. **心の傾向** — セルフトークの傾向と認知的なコメント（該当する記述がなければ省略可）
+4. **次の期間への提案** — 具体的で実行しやすい提案を1〜2点
+
+日本語で、丁寧だが親しみのある口調（〜ですね、〜だと思います）で書いてください。`;
+
+export async function generateRangeSummary(
+  range: "week" | "month",
+  offset: number
+): Promise<{ summary?: string; error?: string }> {
+  if (range !== "week" && range !== "month") return { error: "invalid range" };
+  if (!Number.isInteger(offset) || offset > 0 || offset < -520) {
+    return { error: "invalid offset" };
+  }
+
+  const today = todayJst();
+  const { start, end, title } = resolveReviewRange(range, offset, today);
+
+  const [rangeEntries, rangeGoals] = await Promise.all([
+    getEntriesInRange(start, end),
+    getGoalsInRange(start, end),
+  ]);
+
+  if (rangeEntries.length === 0) {
+    return { error: "この期間の日記がまだありません" };
+  }
+
+  const entryTexts = rangeEntries
+    .map((e) => {
+      const sections = [
+        ["うまくいったこと", e.wins],
+        ["感謝", e.gratitude],
+        ["健康", e.health],
+        ["つながり", e.social],
+        ["自分を責めたこと", e.selfTalk],
+        ["学び", e.learnings],
+      ]
+        .filter(([, v]) => v)
+        .map(([k, v]) => `- ${k}: ${v}`)
+        .join("\n");
+      return `### ${formatJa(e.date)}\n${sections}`;
+    })
+    .join("\n\n");
+
+  const goalTexts =
+    rangeGoals.length > 0
+      ? rangeGoals
+          .map((g) => {
+            const mark =
+              g.result === "done"
+                ? "⚪︎達成"
+                : g.result === "partial"
+                  ? "△一部達成"
+                  : g.result === "missed"
+                    ? "×未達成"
+                    : "—未判定";
+            const note = g.note ? `（所感: ${g.note}）` : "";
+            return `- ${formatJa(g.targetDate)} ${g.title} → ${mark}${note}`;
+          })
+          .join("\n")
+      : "（この期間の目標はありません）";
+
+  const env = await getEnv();
+  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+
+  try {
+    const response = await client.messages.create({
+      model: "claude-opus-4-8",
+      max_tokens: 16000,
+      thinking: { type: "adaptive" },
+      system: SUMMARY_SYSTEM,
+      messages: [
+        {
+          role: "user",
+          content: `${title}の日記と目標です。この期間の振り返りレポートをお願いします。\n\n## 日記\n\n${entryTexts}\n\n## 目標と結果\n\n${goalTexts}`,
+        },
+      ],
+    });
+
+    const summary = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("\n")
+      .trim();
+
+    if (!summary) return { error: "まとめを生成できませんでした" };
+
+    const db = await getDb();
+    await db
+      .insert(aiSummaries)
+      .values({ rangeType: range, startDate: start, content: summary })
+      .onConflictDoUpdate({
+        target: [aiSummaries.rangeType, aiSummaries.startDate],
+        set: { content: summary, createdAt: new Date().toISOString() },
+      });
+
+    revalidatePath("/review");
+    return { summary };
+  } catch (e) {
+    console.error("AI summary failed:", e);
+    return { error: "まとめの生成に失敗しました。時間をおいて再試行してください" };
   }
 }

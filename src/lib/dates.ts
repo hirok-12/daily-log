@@ -46,3 +46,30 @@ export function addMonths(month: string, diff: number): string {
   const d = new Date(Date.UTC(y, m - 1 + diff, 1));
   return d.toISOString().slice(0, 7);
 }
+
+export type ReviewRange = "week" | "month";
+
+/** 振り返り期間（週次: 月曜はじまり / 月次）の開始・終了・表示名を求める */
+export function resolveReviewRange(
+  range: ReviewRange,
+  offset: number,
+  today: string
+): { start: string; end: string; title: string } {
+  if (range === "week") {
+    const mondayOffset = (dayOfWeek(today) + 6) % 7;
+    const thisMonday = addDays(today, -mondayOffset);
+    const start = addDays(thisMonday, offset * 7);
+    const end = addDays(start, 6);
+    return { start, end, title: `${formatJa(start)} 〜 ${formatJa(end)}` };
+  }
+  const [y, m] = today.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + offset, 1));
+  const start = d.toISOString().slice(0, 10);
+  const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
+  const end = last.toISOString().slice(0, 10);
+  return {
+    start,
+    end,
+    title: `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月`,
+  };
+}

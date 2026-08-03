@@ -38,3 +38,17 @@ export const goals = sqliteTable("goals", {
 });
 
 export type Goal = typeof goals.$inferSelect;
+
+export const aiSummaries = sqliteTable("ai_summaries", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  /** "week" | "month" */
+  rangeType: text("range_type").notNull(),
+  /** 期間の開始日 YYYY-MM-DD (JST) */
+  startDate: text("start_date").notNull(),
+  content: text("content").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+export type AiSummary = typeof aiSummaries.$inferSelect;

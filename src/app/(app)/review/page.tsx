@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { addDays, dayOfWeek, formatJa, todayJst } from "@/lib/dates";
-import { getEntriesInRange, getGoalsInRange } from "@/lib/queries";
+import { resolveReviewRange, todayJst } from "@/lib/dates";
+import { getAiSummary, getEntriesInRange, getGoalsInRange } from "@/lib/queries";
 import { RESULT_LABEL } from "@/components/GoalItem";
+import RangeSummary from "@/components/RangeSummary";
 import type { GoalResult } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
@@ -23,29 +24,12 @@ export default async function ReviewPage({
   const offset = Number.parseInt(params.offset ?? "0", 10) || 0;
   const today = todayJst();
 
-  let start: string;
-  let end: string;
-  let title: string;
+  const { start, end, title } = resolveReviewRange(range, offset, today);
 
-  if (range === "week") {
-    // 月曜はじまり
-    const mondayOffset = (dayOfWeek(today) + 6) % 7;
-    const thisMonday = addDays(today, -mondayOffset);
-    start = addDays(thisMonday, offset * 7);
-    end = addDays(start, 6);
-    title = `${formatJa(start)} 〜 ${formatJa(end)}`;
-  } else {
-    const [y, m] = today.split("-").map(Number);
-    const d = new Date(Date.UTC(y, m - 1 + offset, 1));
-    start = d.toISOString().slice(0, 10);
-    const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
-    end = last.toISOString().slice(0, 10);
-    title = `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月`;
-  }
-
-  const [rangeEntries, rangeGoals] = await Promise.all([
+  const [rangeEntries, rangeGoals, aiSummary] = await Promise.all([
     getEntriesInRange(start, end),
     getGoalsInRange(start, end),
+    getAiSummary(range, start),
   ]);
 
   const allWins = rangeEntries.flatMap((e) => lines(e.wins));
@@ -125,8 +109,16 @@ export default async function ReviewPage({
         ))}
       </section>
 
+      <RangeSummary
+        key={`${range}-${start}`}
+        range={range}
+        offset={offset}
+        initialSummary={aiSummary?.content ?? null}
+        hasEntries={rangeEntries.length > 0}
+      />
+
       {rangeEntries.length === 0 ? (
-        <p className="text-sm text-ink-faint text-center py-10 rise rise-2">
+        <p className="text-sm text-ink-faint text-center py-10 rise rise-3">
           この期間の記録はありません
         </p>
       ) : (

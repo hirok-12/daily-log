@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import EntryForm from "@/components/EntryForm";
-import GoalMarks from "@/components/GoalMarks";
+import GoalItem from "@/components/GoalItem";
 import { addDays, formatJa, todayJst } from "@/lib/dates";
 import { getEntryByDate, getGoalsByDate } from "@/lib/queries";
 
@@ -56,9 +56,8 @@ export default async function EntryPage({
           </h3>
           <ul className="space-y-3">
             {dayGoals.map((goal) => (
-              <li key={goal.id} className="flex items-center justify-between gap-4">
-                <span className="text-[0.95rem]">{goal.title}</span>
-                <GoalMarks goal={goal} />
+              <li key={goal.id}>
+                <GoalItem goal={goal} />
               </li>
             ))}
           </ul>

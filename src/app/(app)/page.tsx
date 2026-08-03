@@ -1,5 +1,5 @@
 import EntryForm from "@/components/EntryForm";
-import GoalMarks from "@/components/GoalMarks";
+import GoalItem from "@/components/GoalItem";
 import { formatJa, todayJst } from "@/lib/dates";
 import { getEntryByDate, getGoalsByDate, getStreak } from "@/lib/queries";
 
@@ -38,12 +38,8 @@ export default async function TodayPage() {
           </h3>
           <ul className="space-y-3">
             {todaysGoals.map((goal) => (
-              <li
-                key={goal.id}
-                className="flex items-center justify-between gap-4"
-              >
-                <span className="text-[0.95rem]">{goal.title}</span>
-                <GoalMarks goal={goal} />
+              <li key={goal.id}>
+                <GoalItem goal={goal} />
               </li>
             ))}
           </ul>

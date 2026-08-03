@@ -95,12 +95,19 @@ export async function addGoal(formData: FormData) {
   revalidatePath("/");
 }
 
-export async function setGoalResult(id: number, result: GoalResult, note?: string) {
+export async function setGoalResult(id: number, result: GoalResult) {
   if (!GOAL_RESULTS.includes(result)) return;
+  const db = await getDb();
+  await db.update(goals).set({ result }).where(eq(goals.id, id));
+  revalidatePath("/goals");
+  revalidatePath("/");
+}
+
+export async function setGoalNote(id: number, note: string) {
   const db = await getDb();
   await db
     .update(goals)
-    .set({ result, note: note?.trim() || null })
+    .set({ note: note.trim() || null })
     .where(eq(goals.id, id));
   revalidatePath("/goals");
   revalidatePath("/");

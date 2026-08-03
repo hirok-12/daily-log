@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { addDays, dayOfWeek, formatJa, todayJst } from "@/lib/dates";
 import { getEntriesInRange, getGoalsInRange } from "@/lib/queries";
-import { RESULT_LABEL } from "@/components/GoalMarks";
+import { RESULT_LABEL } from "@/components/GoalItem";
 import type { GoalResult } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
@@ -206,7 +206,14 @@ export default async function ReviewPage({
                     <span className="text-xs text-ink-faint shrink-0">
                       {goal.targetDate.slice(5).replace("-", "/")}
                     </span>
-                    <span className="text-[0.95rem]">{goal.title}</span>
+                    <div className="min-w-0">
+                      <span className="text-[0.95rem]">{goal.title}</span>
+                      {goal.note && (
+                        <p className="text-xs text-ink-soft mt-0.5">
+                          {goal.note}
+                        </p>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>

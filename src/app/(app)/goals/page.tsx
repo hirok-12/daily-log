@@ -1,8 +1,7 @@
-import GoalMarks, { RESULT_LABEL } from "@/components/GoalMarks";
+import GoalItem from "@/components/GoalItem";
 import { addGoal } from "@/app/actions";
 import { formatJa, todayJst } from "@/lib/dates";
 import { getAllGoals } from "@/lib/queries";
-import type { GoalResult } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -73,17 +72,8 @@ export default async function GoalsPage() {
           </p>
         ) : (
           upcoming.map((goal) => (
-            <div
-              key={goal.id}
-              className="card px-6 py-4 flex items-center justify-between gap-4"
-            >
-              <div>
-                <p className="text-xs text-ink-faint mb-0.5">
-                  {formatJa(goal.targetDate)}
-                </p>
-                <p className="text-[0.95rem]">{goal.title}</p>
-              </div>
-              <GoalMarks goal={goal} />
+            <div key={goal.id} className="card px-6 py-4">
+              <GoalItem goal={goal} dateLabel={formatJa(goal.targetDate)} />
             </div>
           ))
         )}
@@ -97,35 +87,12 @@ export default async function GoalsPage() {
           <p className="text-sm text-ink-faint py-4">まだ記録がありません</p>
         ) : (
           past.map((goal) => (
-            <div
-              key={goal.id}
-              className="card px-6 py-4 flex items-center justify-between gap-4"
-            >
-              <div className="flex items-baseline gap-3 min-w-0">
-                <span
-                  className={`font-display text-lg shrink-0 ${
-                    goal.result === "done"
-                      ? "text-matcha"
-                      : goal.result === "partial"
-                        ? "text-kin"
-                        : goal.result === "missed"
-                          ? "text-shu"
-                          : "text-ink-faint"
-                  }`}
-                >
-                  {RESULT_LABEL[goal.result as GoalResult]}
-                </span>
-                <div className="min-w-0">
-                  <p className="text-xs text-ink-faint mb-0.5">
-                    {formatJa(goal.targetDate)}
-                  </p>
-                  <p className="text-[0.95rem]">{goal.title}</p>
-                  {goal.note && (
-                    <p className="text-xs text-ink-soft mt-1">{goal.note}</p>
-                  )}
-                </div>
-              </div>
-              <GoalMarks goal={goal} />
+            <div key={goal.id} className="card px-6 py-4">
+              <GoalItem
+                goal={goal}
+                dateLabel={formatJa(goal.targetDate)}
+                showResultLabel
+              />
             </div>
           ))
         )}

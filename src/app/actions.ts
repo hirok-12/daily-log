@@ -143,6 +143,21 @@ export async function setGoalNote(id: number, note: string) {
   revalidatePath("/");
 }
 
+/** 月間目標用: 日付付きでコメントを追記する */
+export async function appendGoalNote(id: number, text: string) {
+  const trimmed = text.trim();
+  if (!trimmed) return;
+  const db = await getDb();
+  const goal = await db.query.goals.findFirst({ where: eq(goals.id, id) });
+  if (!goal) return;
+  const [, m, d] = todayJst().split("-").map(Number);
+  const line = `${m}/${d}: ${trimmed}`;
+  const note = goal.note ? `${goal.note}\n${line}` : line;
+  await db.update(goals).set({ note }).where(eq(goals.id, id));
+  revalidatePath("/goals");
+  revalidatePath("/");
+}
+
 export async function deleteGoal(id: number) {
   const db = await getDb();
   await db.delete(goals).where(eq(goals.id, id));

@@ -228,7 +228,9 @@ export default async function ReviewPage({
                 <div className="min-w-0">
                   <span className="text-[0.95rem]">{goal.title}</span>
                   {goal.note && (
-                    <p className="text-xs text-ink-soft mt-0.5">{goal.note}</p>
+                    <p className="text-xs text-ink-soft mt-0.5 whitespace-pre-line">
+                      {goal.note}
+                    </p>
                   )}
                 </div>
               </li>

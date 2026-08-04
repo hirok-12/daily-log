@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { deleteGoal, setGoalNote, setGoalResult } from "@/app/actions";
+import {
+  appendGoalNote,
+  deleteGoal,
+  setGoalNote,
+  setGoalResult,
+} from "@/app/actions";
 import type { Goal, GoalResult } from "@/db/schema";
 
 export const RESULT_LABEL: Record<GoalResult, string> = {
@@ -24,6 +29,13 @@ const MARKS: { value: GoalResult; label: string; className: string }[] = [
   { value: "missed", label: "×", className: "text-shu border-shu" },
 ];
 
+/**
+ * コメントの編集モード:
+ * - append: 月間目標への日付付き追記（入力は1行、日付は自動付与）
+ * - edit:   コメント全体の編集（日付目標は1行入力、月間目標はログ全体をtextareaで）
+ */
+type EditMode = null | "append" | "edit";
+
 export default function GoalItem({
   goal,
   dateLabel,
@@ -34,18 +46,34 @@ export default function GoalItem({
   showResultLabel?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(goal.note ?? "");
+  const [mode, setMode] = useState<EditMode>(null);
+  const [draft, setDraft] = useState("");
+  const isMonth = goal.scope === "month";
 
-  const openEditor = () => {
-    setDraft(goal.note ?? "");
-    setEditing(true);
+  const openComment = () => {
+    if (isMonth) {
+      setDraft("");
+      setMode("append");
+    } else {
+      setDraft(goal.note ?? "");
+      setMode("edit");
+    }
   };
 
-  const saveNote = () => {
+  const openFullEdit = () => {
+    setDraft(goal.note ?? "");
+    setMode("edit");
+  };
+
+  const save = () => {
     startTransition(async () => {
-      await setGoalNote(goal.id, draft);
-      setEditing(false);
+      if (mode === "append") {
+        await appendGoalNote(goal.id, draft);
+      } else {
+        await setGoalNote(goal.id, draft);
+      }
+      setMode(null);
+      setDraft("");
     });
   };
 
@@ -79,7 +107,7 @@ export default function GoalItem({
                   startTransition(() =>
                     setGoalResult(goal.id, active ? "pending" : mark.value)
                   );
-                  if (!active && !goal.note) openEditor();
+                  if (!active && !goal.note) openComment();
                 }}
                 className={`w-8 h-8 rounded-full border text-sm leading-none transition-all cursor-pointer ${
                   active
@@ -93,10 +121,10 @@ export default function GoalItem({
           })}
           <button
             type="button"
-            title="一言コメント"
-            onClick={() => (editing ? setEditing(false) : openEditor())}
+            title={isMonth ? "経過を追記" : "一言コメント"}
+            onClick={() => (mode ? setMode(null) : openComment())}
             className={`ml-1 text-xs transition-colors cursor-pointer ${
-              editing || goal.note
+              mode || goal.note
                 ? "text-ink-soft hover:text-ink"
                 : "text-ink-faint hover:text-ink-soft"
             }`}
@@ -117,41 +145,98 @@ export default function GoalItem({
           </button>
         </div>
       </div>
-      {editing ? (
+
+      {mode === "append" && (
         <div className="mt-2 flex gap-2">
           <input
             type="text"
             value={draft}
             autoFocus
-            placeholder="一言コメント（所感）"
+            placeholder="きょうの経過をひとこと（日付は自動で付きます）"
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
-              // IME変換確定のEnter（isComposing / keyCode 229）では保存しない
               if (e.nativeEvent.isComposing || e.keyCode === 229) return;
-              if (e.key === "Enter") saveNote();
-              if (e.key === "Escape") setEditing(false);
+              if (e.key === "Enter") save();
+              if (e.key === "Escape") setMode(null);
             }}
             className="field flex-1 text-sm"
           />
           <button
             type="button"
-            onClick={saveNote}
+            onClick={save}
             className="btn-primary shrink-0 text-sm"
           >
-            保存
+            追記
           </button>
         </div>
-      ) : (
-        goal.note && (
-          <button
-            type="button"
-            title="コメントを編集"
-            onClick={openEditor}
-            className="mt-1 block text-left text-xs text-ink-soft hover:text-ink transition-colors cursor-pointer"
-          >
-            {goal.note}
-          </button>
-        )
+      )}
+
+      {mode === "edit" &&
+        (isMonth ? (
+          <div className="mt-2 space-y-2">
+            <textarea
+              value={draft}
+              autoFocus
+              rows={Math.min(6, Math.max(3, draft.split("\n").length + 1))}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) save();
+                if (e.key === "Escape") setMode(null);
+              }}
+              className="field w-full text-sm"
+            />
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setMode(null)}
+                className="btn-ghost text-sm"
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                onClick={save}
+                className="btn-primary shrink-0 text-sm"
+              >
+                保存
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-2 flex gap-2">
+            <input
+              type="text"
+              value={draft}
+              autoFocus
+              placeholder="一言コメント（所感）"
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+                if (e.key === "Enter") save();
+                if (e.key === "Escape") setMode(null);
+              }}
+              className="field flex-1 text-sm"
+            />
+            <button
+              type="button"
+              onClick={save}
+              className="btn-primary shrink-0 text-sm"
+            >
+              保存
+            </button>
+          </div>
+        ))}
+
+      {mode === null && goal.note && (
+        <button
+          type="button"
+          title="コメントを編集"
+          onClick={openFullEdit}
+          className="mt-1 block text-left text-xs text-ink-soft hover:text-ink transition-colors cursor-pointer whitespace-pre-line"
+        >
+          {goal.note}
+        </button>
       )}
     </div>
   );

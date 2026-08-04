@@ -30,6 +30,12 @@ export function formatJa(date: string): string {
   return `${m}月${d}日（${WEEKDAY_JA[dayOfWeek(date)]}）`;
 }
 
+/** "2026-08" -> "2026年8月" */
+export function formatMonthJa(month: string): string {
+  const [y, m] = month.split("-").map(Number);
+  return `${y}年${m}月`;
+}
+
 /** その月の日付一覧 (YYYY-MM -> ["YYYY-MM-01", ...]) */
 export function daysInMonth(month: string): string[] {
   const [y, m] = month.split("-").map(Number);

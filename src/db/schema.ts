@@ -27,8 +27,10 @@ export type GoalResult = (typeof GOAL_RESULTS)[number];
 
 export const goals = sqliteTable("goals", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  /** YYYY-MM-DD (JST) */
+  /** YYYY-MM-DD (JST)。月間目標はその月の1日 */
   targetDate: text("target_date").notNull(),
+  /** "day"（特定日）| "month"（月間目標） */
+  scope: text("scope").notNull().default("day"),
   title: text("title").notNull(),
   result: text("result").notNull().default("pending"),
   note: text("note"),

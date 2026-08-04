@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { resolveReviewRange, todayJst } from "@/lib/dates";
-import { getAiSummary, getEntriesInRange, getGoalsInRange } from "@/lib/queries";
+import {
+  getAiSummary,
+  getEntriesInRange,
+  getGoalsInRange,
+} from "@/lib/queries";
 import { RESULT_LABEL } from "@/components/GoalItem";
 import RangeSummary from "@/components/RangeSummary";
 import type { GoalResult } from "@/db/schema";
@@ -26,11 +30,17 @@ export default async function ReviewPage({
 
   const { start, end, title } = resolveReviewRange(range, offset, today);
 
-  const [rangeEntries, rangeGoals, aiSummary] = await Promise.all([
+  const [rangeEntries, allRangeGoals, aiSummary] = await Promise.all([
     getEntriesInRange(start, end),
     getGoalsInRange(start, end),
     getAiSummary(range, start),
   ]);
+
+  // 月間目標は月次ビューでのみ扱う（週次では月初の週に紛れ込むため除外）
+  const rangeGoals =
+    range === "week"
+      ? allRangeGoals.filter((g) => g.scope === "day")
+      : allRangeGoals;
 
   const allWins = rangeEntries.flatMap((e) => lines(e.wins));
   const allLearnings = rangeEntries.flatMap((e) => lines(e.learnings));
@@ -91,7 +101,9 @@ export default async function ReviewPage({
           { label: "つながり", value: socialDays, unit: "日" },
           {
             label: "目標達成",
-            value: judgedGoals.length ? `${doneCount}/${judgedGoals.length}` : "—",
+            value: judgedGoals.length
+              ? `${doneCount}/${judgedGoals.length}`
+              : "—",
             unit: "",
           },
         ].map((stat) => (
@@ -117,11 +129,13 @@ export default async function ReviewPage({
         hasEntries={rangeEntries.length > 0}
       />
 
-      {rangeEntries.length === 0 ? (
+      {rangeEntries.length === 0 && rangeGoals.length === 0 && (
         <p className="text-sm text-ink-faint text-center py-10 rise rise-3">
           この期間の記録はありません
         </p>
-      ) : (
+      )}
+
+      {rangeEntries.length > 0 && (
         <>
           <section className="card px-6 py-5 rise rise-2">
             <h3 className="font-display font-bold tracking-wider mb-3 stamp-dot">
@@ -129,7 +143,10 @@ export default async function ReviewPage({
             </h3>
             <ul className="space-y-1.5">
               {allWins.map((win, i) => (
-                <li key={i} className="text-[0.95rem] leading-relaxed flex gap-2">
+                <li
+                  key={i}
+                  className="text-[0.95rem] leading-relaxed flex gap-2"
+                >
                   <span className="text-matcha shrink-0">◦</span>
                   {win}
                 </li>
@@ -146,7 +163,10 @@ export default async function ReviewPage({
             </h3>
             <ul className="space-y-1.5">
               {allLearnings.map((learning, i) => (
-                <li key={i} className="text-[0.95rem] leading-relaxed flex gap-2">
+                <li
+                  key={i}
+                  className="text-[0.95rem] leading-relaxed flex gap-2"
+                >
                   <span className="text-shu shrink-0">◦</span>
                   {learning}
                 </li>
@@ -163,7 +183,10 @@ export default async function ReviewPage({
             </h3>
             <ul className="space-y-1.5">
               {allGratitude.map((g, i) => (
-                <li key={i} className="text-[0.95rem] leading-relaxed flex gap-2">
+                <li
+                  key={i}
+                  className="text-[0.95rem] leading-relaxed flex gap-2"
+                >
                   <span className="text-kin shrink-0">◦</span>
                   {g}
                 </li>
@@ -173,45 +196,45 @@ export default async function ReviewPage({
               )}
             </ul>
           </section>
-
-          {rangeGoals.length > 0 && (
-            <section className="card px-6 py-5 rise rise-5">
-              <h3 className="font-display font-bold tracking-wider mb-3 stamp-dot">
-                目標のふりかえり
-              </h3>
-              <ul className="space-y-2">
-                {rangeGoals.map((goal) => (
-                  <li key={goal.id} className="flex items-baseline gap-3">
-                    <span
-                      className={`font-display shrink-0 ${
-                        goal.result === "done"
-                          ? "text-matcha"
-                          : goal.result === "partial"
-                            ? "text-kin"
-                            : goal.result === "missed"
-                              ? "text-shu"
-                              : "text-ink-faint"
-                      }`}
-                    >
-                      {RESULT_LABEL[goal.result as GoalResult]}
-                    </span>
-                    <span className="text-xs text-ink-faint shrink-0">
-                      {goal.targetDate.slice(5).replace("-", "/")}
-                    </span>
-                    <div className="min-w-0">
-                      <span className="text-[0.95rem]">{goal.title}</span>
-                      {goal.note && (
-                        <p className="text-xs text-ink-soft mt-0.5">
-                          {goal.note}
-                        </p>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
         </>
+      )}
+
+      {rangeGoals.length > 0 && (
+        <section className="card px-6 py-5 rise rise-5">
+          <h3 className="font-display font-bold tracking-wider mb-3 stamp-dot">
+            目標のふりかえり
+          </h3>
+          <ul className="space-y-2">
+            {rangeGoals.map((goal) => (
+              <li key={goal.id} className="flex items-baseline gap-3">
+                <span
+                  className={`font-display shrink-0 ${
+                    goal.result === "done"
+                      ? "text-matcha"
+                      : goal.result === "partial"
+                        ? "text-kin"
+                        : goal.result === "missed"
+                          ? "text-shu"
+                          : "text-ink-faint"
+                  }`}
+                >
+                  {RESULT_LABEL[goal.result as GoalResult]}
+                </span>
+                <span className="text-xs text-ink-faint shrink-0">
+                  {goal.scope === "month"
+                    ? "月間"
+                    : goal.targetDate.slice(5).replace("-", "/")}
+                </span>
+                <div className="min-w-0">
+                  <span className="text-[0.95rem]">{goal.title}</span>
+                  {goal.note && (
+                    <p className="text-xs text-ink-soft mt-0.5">{goal.note}</p>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </div>
   );

@@ -1,18 +1,32 @@
 import GoalItem from "@/components/GoalItem";
-import { addGoal } from "@/app/actions";
-import { formatJa, todayJst } from "@/lib/dates";
+import { addGoal, addMonthlyGoal } from "@/app/actions";
+import { formatJa, formatMonthJa, todayJst } from "@/lib/dates";
 import { getAllGoals } from "@/lib/queries";
+import type { Goal } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
 
+function goalDateLabel(goal: Goal): string {
+  return goal.scope === "month"
+    ? `${formatMonthJa(goal.targetDate.slice(0, 7))}の目標`
+    : formatJa(goal.targetDate);
+}
+
 export default async function GoalsPage() {
   const today = todayJst();
+  const thisMonth = today.slice(0, 7);
   const allGoals = await getAllGoals();
 
+  // 月間目標は月が終わるまで「これから」に置く
+  const isUpcoming = (g: Goal) =>
+    g.scope === "month"
+      ? g.targetDate.slice(0, 7) >= thisMonth
+      : g.targetDate >= today;
+
   const upcoming = allGoals
-    .filter((g) => g.targetDate >= today)
+    .filter(isUpcoming)
     .sort((a, b) => a.targetDate.localeCompare(b.targetDate));
-  const past = allGoals.filter((g) => g.targetDate < today);
+  const past = allGoals.filter((g) => !isUpcoming(g));
 
   const judged = allGoals.filter((g) => g.result !== "pending");
   const doneCount = allGoals.filter((g) => g.result === "done").length;
@@ -62,7 +76,32 @@ export default async function GoalsPage() {
         </form>
       </section>
 
-      <section className="space-y-3 rise rise-2">
+      <section className="card px-6 py-5 rise rise-2">
+        <h3 className="font-display font-bold tracking-wider mb-4 stamp-dot">
+          今月の目標を立てる
+        </h3>
+        <form action={addMonthlyGoal} className="flex flex-col sm:flex-row gap-3">
+          <input
+            type="month"
+            name="targetMonth"
+            defaultValue={thisMonth}
+            required
+            className="field sm:max-w-44"
+          />
+          <input
+            type="text"
+            name="title"
+            placeholder="例）本を2冊読み切る"
+            required
+            className="field flex-1"
+          />
+          <button type="submit" className="btn-primary justify-center shrink-0">
+            立てる
+          </button>
+        </form>
+      </section>
+
+      <section className="space-y-3 rise rise-3">
         <h3 className="font-display font-bold tracking-wider stamp-dot">
           これから
         </h3>
@@ -73,13 +112,13 @@ export default async function GoalsPage() {
         ) : (
           upcoming.map((goal) => (
             <div key={goal.id} className="card px-6 py-4">
-              <GoalItem goal={goal} dateLabel={formatJa(goal.targetDate)} />
+              <GoalItem goal={goal} dateLabel={goalDateLabel(goal)} />
             </div>
           ))
         )}
       </section>
 
-      <section className="space-y-3 rise rise-3">
+      <section className="space-y-3 rise rise-4">
         <h3 className="font-display font-bold tracking-wider stamp-dot">
           これまで
         </h3>
@@ -90,7 +129,7 @@ export default async function GoalsPage() {
             <div key={goal.id} className="card px-6 py-4">
               <GoalItem
                 goal={goal}
-                dateLabel={formatJa(goal.targetDate)}
+                dateLabel={goalDateLabel(goal)}
                 showResultLabel
               />
             </div>

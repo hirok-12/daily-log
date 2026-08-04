@@ -41,7 +41,7 @@ export async function getStreak(): Promise<number> {
 export async function getGoalsByDate(date: string) {
   const db = await getDb();
   return db.query.goals.findMany({
-    where: eq(goals.targetDate, date),
+    where: and(eq(goals.targetDate, date), eq(goals.scope, "day")),
     orderBy: asc(goals.id),
   });
 }

@@ -102,6 +102,29 @@ export async function addGoal(formData: FormData) {
   revalidatePath("/");
 }
 
+const MONTH_RE = /^\d{4}-\d{2}$/;
+
+export async function addMonthlyGoal(formData: FormData) {
+  const title = formData.get("title");
+  const targetMonth = formData.get("targetMonth");
+  if (
+    typeof title !== "string" ||
+    !title.trim() ||
+    typeof targetMonth !== "string" ||
+    !MONTH_RE.test(targetMonth)
+  ) {
+    return;
+  }
+  const db = await getDb();
+  await db.insert(goals).values({
+    title: title.trim(),
+    targetDate: `${targetMonth}-01`,
+    scope: "month",
+  });
+  revalidatePath("/goals");
+  revalidatePath("/");
+}
+
 export async function setGoalResult(id: number, result: GoalResult) {
   if (!GOAL_RESULTS.includes(result)) return;
   const db = await getDb();
@@ -240,10 +263,16 @@ export async function generateRangeSummary(
   const today = todayJst();
   const { start, end, title } = resolveReviewRange(range, offset, today);
 
-  const [rangeEntries, rangeGoals] = await Promise.all([
+  const [rangeEntries, allRangeGoals] = await Promise.all([
     getEntriesInRange(start, end),
     getGoalsInRange(start, end),
   ]);
+
+  // 月間目標は月次まとめでのみ扱う
+  const rangeGoals =
+    range === "week"
+      ? allRangeGoals.filter((g) => g.scope === "day")
+      : allRangeGoals;
 
   if (rangeEntries.length === 0) {
     return { error: "この期間の日記がまだありません" };
@@ -279,7 +308,9 @@ export async function generateRangeSummary(
                     ? "×未達成"
                     : "—未判定";
             const note = g.note ? `（所感: ${g.note}）` : "";
-            return `- ${formatJa(g.targetDate)} ${g.title} → ${mark}${note}`;
+            const when =
+              g.scope === "month" ? "月間目標" : formatJa(g.targetDate);
+            return `- ${when} ${g.title} → ${mark}${note}`;
           })
           .join("\n")
       : "（この期間の目標はありません）";

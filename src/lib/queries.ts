@@ -68,3 +68,16 @@ export async function getAiSummary(rangeType: string, startDate: string) {
     ),
   });
 }
+
+/** 指定月の月間目標 (month: YYYY-MM) */
+export async function getMonthlyGoals(month: string) {
+  const db = await getDb();
+  return db.query.goals.findMany({
+    where: and(
+      eq(goals.scope, "month"),
+      gte(goals.targetDate, `${month}-01`),
+      lte(goals.targetDate, `${month}-31`)
+    ),
+    orderBy: asc(goals.id),
+  });
+}

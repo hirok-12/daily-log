@@ -114,41 +114,46 @@ export default function GoalItem({
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {MARKS.map((mark) => {
-            const active = goal.result === mark.value;
-            return (
+          {/* 進行中の月間目標は「きょう」のマークに一本化し、月全体の判定は月が終わってから */}
+          {!showTodayRow && (
+            <>
+              {MARKS.map((mark) => {
+                const active = goal.result === mark.value;
+                return (
+                  <button
+                    key={mark.value}
+                    type="button"
+                    title={mark.label}
+                    onClick={() => {
+                      startTransition(() =>
+                        setGoalResult(goal.id, active ? "pending" : mark.value)
+                      );
+                      if (!active && !goal.note) openComment();
+                    }}
+                    className={`w-8 h-8 rounded-full border text-sm leading-none transition-all cursor-pointer ${
+                      active
+                        ? `${mark.className} bg-paper scale-110`
+                        : "text-ink-faint border-line hover:border-ink-soft"
+                    }`}
+                  >
+                    {mark.label}
+                  </button>
+                );
+              })}
               <button
-                key={mark.value}
                 type="button"
-                title={mark.label}
-                onClick={() => {
-                  startTransition(() =>
-                    setGoalResult(goal.id, active ? "pending" : mark.value)
-                  );
-                  if (!active && !goal.note) openComment();
-                }}
-                className={`w-8 h-8 rounded-full border text-sm leading-none transition-all cursor-pointer ${
-                  active
-                    ? `${mark.className} bg-paper scale-110`
-                    : "text-ink-faint border-line hover:border-ink-soft"
+                title={isMonth ? "経過を追記" : "一言コメント"}
+                onClick={() => (mode ? setMode(null) : openComment())}
+                className={`ml-1 text-xs transition-colors cursor-pointer ${
+                  mode || goal.note
+                    ? "text-ink-soft hover:text-ink"
+                    : "text-ink-faint hover:text-ink-soft"
                 }`}
               >
-                {mark.label}
+                コメント
               </button>
-            );
-          })}
-          <button
-            type="button"
-            title={isMonth ? "経過を追記" : "一言コメント"}
-            onClick={() => (mode ? setMode(null) : openComment())}
-            className={`ml-1 text-xs transition-colors cursor-pointer ${
-              mode || goal.note
-                ? "text-ink-soft hover:text-ink"
-                : "text-ink-faint hover:text-ink-soft"
-            }`}
-          >
-            コメント
-          </button>
+            </>
+          )}
           <button
             type="button"
             title="削除"

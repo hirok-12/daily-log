@@ -41,6 +41,21 @@ export const goals = sqliteTable("goals", {
 
 export type Goal = typeof goals.$inferSelect;
 
+/** 月間目標のデイリーチェックイン */
+export const goalCheckins = sqliteTable("goal_checkins", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  goalId: integer("goal_id").notNull(),
+  /** YYYY-MM-DD (JST) */
+  date: text("date").notNull(),
+  result: text("result").notNull().default("pending"),
+  note: text("note"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+export type GoalCheckin = typeof goalCheckins.$inferSelect;
+
 export const aiSummaries = sqliteTable("ai_summaries", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   /** "week" | "month" */

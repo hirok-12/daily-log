@@ -2,6 +2,7 @@ import EntryForm from "@/components/EntryForm";
 import GoalItem from "@/components/GoalItem";
 import { formatJa, todayJst } from "@/lib/dates";
 import {
+  getCheckinsForGoals,
   getEntryByDate,
   getGoalsByDate,
   getMonthlyGoals,
@@ -18,6 +19,7 @@ export default async function TodayPage() {
     getGoalsByDate(today),
     getMonthlyGoals(today.slice(0, 7)),
   ]);
+  const checkins = await getCheckinsForGoals(monthlyGoals.map((g) => g.id));
 
   return (
     <div className="space-y-8">
@@ -45,7 +47,11 @@ export default async function TodayPage() {
           <ul className="space-y-3">
             {monthlyGoals.map((goal) => (
               <li key={goal.id}>
-                <GoalItem goal={goal} />
+                <GoalItem
+                  goal={goal}
+                  checkins={checkins.filter((c) => c.goalId === goal.id)}
+                  todayDate={today}
+                />
               </li>
             ))}
           </ul>

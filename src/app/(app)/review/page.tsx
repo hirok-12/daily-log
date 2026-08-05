@@ -2,6 +2,7 @@ import Link from "next/link";
 import { resolveReviewRange, todayJst } from "@/lib/dates";
 import {
   getAiSummary,
+  getCheckinsForGoals,
   getEntriesInRange,
   getGoalsInRange,
 } from "@/lib/queries";
@@ -41,6 +42,10 @@ export default async function ReviewPage({
     range === "week"
       ? allRangeGoals.filter((g) => g.scope === "day")
       : allRangeGoals;
+
+  const checkins = await getCheckinsForGoals(
+    rangeGoals.filter((g) => g.scope === "month").map((g) => g.id)
+  );
 
   const allWins = rangeEntries.flatMap((e) => lines(e.wins));
   const allLearnings = rangeEntries.flatMap((e) => lines(e.learnings));
@@ -231,6 +236,26 @@ export default async function ReviewPage({
                     <p className="text-xs text-ink-soft mt-0.5 whitespace-pre-line">
                       {goal.note}
                     </p>
+                  )}
+                  {goal.scope === "month" && (
+                    <ul className="mt-0.5 space-y-0.5">
+                      {checkins
+                        .filter((c) => c.goalId === goal.id)
+                        .map((c) => (
+                          <li
+                            key={c.id}
+                            className="text-xs text-ink-soft flex gap-1.5"
+                          >
+                            <span className="text-ink-faint shrink-0">
+                              {c.date.slice(5).replace("-", "/")}
+                            </span>
+                            <span className="shrink-0">
+                              {RESULT_LABEL[c.result as GoalResult]}
+                            </span>
+                            {c.note && <span>{c.note}</span>}
+                          </li>
+                        ))}
+                    </ul>
                   )}
                 </div>
               </li>

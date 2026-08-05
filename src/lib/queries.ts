@@ -1,5 +1,5 @@
-import { and, asc, desc, eq, gte, lte } from "drizzle-orm";
-import { aiSummaries, entries, goals } from "@/db/schema";
+import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
+import { aiSummaries, entries, goalCheckins, goals } from "@/db/schema";
 import { getDb } from "@/lib/db";
 import { addDays, todayJst } from "@/lib/dates";
 
@@ -79,5 +79,15 @@ export async function getMonthlyGoals(month: string) {
       lte(goals.targetDate, `${month}-31`)
     ),
     orderBy: asc(goals.id),
+  });
+}
+
+/** 複数目標のデイリーチェックイン一覧（日付昇順） */
+export async function getCheckinsForGoals(goalIds: number[]) {
+  if (goalIds.length === 0) return [];
+  const db = await getDb();
+  return db.query.goalCheckins.findMany({
+    where: inArray(goalCheckins.goalId, goalIds),
+    orderBy: asc(goalCheckins.date),
   });
 }

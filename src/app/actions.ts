@@ -8,6 +8,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import {
   aiSummaries,
   entries,
+  goalCheckins,
   goals,
   GOAL_RESULTS,
   type GoalResult,
@@ -15,7 +16,11 @@ import {
 import { createSessionToken, sessionCookie } from "@/lib/auth";
 import { getDb, getEnv } from "@/lib/db";
 import { formatJa, resolveReviewRange, todayJst } from "@/lib/dates";
-import { getEntriesInRange, getGoalsInRange } from "@/lib/queries";
+import {
+  getCheckinsForGoals,
+  getEntriesInRange,
+  getGoalsInRange,
+} from "@/lib/queries";
 
 // ---------- 認証 ----------
 
@@ -161,6 +166,36 @@ export async function appendGoalNote(id: number, text: string) {
 export async function deleteGoal(id: number) {
   const db = await getDb();
   await db.delete(goals).where(eq(goals.id, id));
+  await db.delete(goalCheckins).where(eq(goalCheckins.goalId, id));
+  revalidatePath("/goals");
+  revalidatePath("/");
+}
+
+// ---------- 月間目標のデイリーチェックイン ----------
+
+export async function setTodayCheckinResult(goalId: number, result: GoalResult) {
+  if (!GOAL_RESULTS.includes(result)) return;
+  const db = await getDb();
+  await db
+    .insert(goalCheckins)
+    .values({ goalId, date: todayJst(), result })
+    .onConflictDoUpdate({
+      target: [goalCheckins.goalId, goalCheckins.date],
+      set: { result },
+    });
+  revalidatePath("/goals");
+  revalidatePath("/");
+}
+
+export async function setTodayCheckinNote(goalId: number, note: string) {
+  const db = await getDb();
+  await db
+    .insert(goalCheckins)
+    .values({ goalId, date: todayJst(), note: note.trim() || null })
+    .onConflictDoUpdate({
+      target: [goalCheckins.goalId, goalCheckins.date],
+      set: { note: note.trim() || null },
+    });
   revalidatePath("/goals");
   revalidatePath("/");
 }
@@ -311,6 +346,17 @@ export async function generateRangeSummary(
     })
     .join("\n\n");
 
+  const checkins = await getCheckinsForGoals(
+    rangeGoals.filter((g) => g.scope === "month").map((g) => g.id)
+  );
+
+  const CHECKIN_MARK: Record<string, string> = {
+    done: "⚪︎",
+    partial: "△",
+    missed: "×",
+    pending: "—",
+  };
+
   const goalTexts =
     rangeGoals.length > 0
       ? rangeGoals
@@ -326,7 +372,16 @@ export async function generateRangeSummary(
             const note = g.note ? `（所感: ${g.note}）` : "";
             const when =
               g.scope === "month" ? "月間目標" : formatJa(g.targetDate);
-            return `- ${when} ${g.title} → ${mark}${note}`;
+            const progress = checkins
+              .filter((c) => c.goalId === g.id)
+              .map(
+                (c) =>
+                  `  - ${c.date.slice(5).replace("-", "/")} ${CHECKIN_MARK[c.result] ?? "—"}${c.note ? ` ${c.note}` : ""}`
+              )
+              .join("\n");
+            return `- ${when} ${g.title} → ${mark}${note}${
+              progress ? `\n  日々の経過:\n${progress}` : ""
+            }`;
           })
           .join("\n")
       : "（この期間の目標はありません）";

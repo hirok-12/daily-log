@@ -1,7 +1,7 @@
 import GoalItem from "@/components/GoalItem";
 import { addGoal, addMonthlyGoal } from "@/app/actions";
 import { formatJa, formatMonthJa, todayJst } from "@/lib/dates";
-import { getAllGoals } from "@/lib/queries";
+import { getAllGoals, getCheckinsForGoals } from "@/lib/queries";
 import type { Goal } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +16,9 @@ export default async function GoalsPage() {
   const today = todayJst();
   const thisMonth = today.slice(0, 7);
   const allGoals = await getAllGoals();
+  const checkins = await getCheckinsForGoals(
+    allGoals.filter((g) => g.scope === "month").map((g) => g.id)
+  );
 
   // 月間目標は月が終わるまで「これから」に置く
   const isUpcoming = (g: Goal) =>
@@ -112,7 +115,17 @@ export default async function GoalsPage() {
         ) : (
           upcoming.map((goal) => (
             <div key={goal.id} className="card px-6 py-4">
-              <GoalItem goal={goal} dateLabel={goalDateLabel(goal)} />
+              <GoalItem
+                goal={goal}
+                dateLabel={goalDateLabel(goal)}
+                checkins={checkins.filter((c) => c.goalId === goal.id)}
+                todayDate={
+                  goal.scope === "month" &&
+                  goal.targetDate.slice(0, 7) === thisMonth
+                    ? today
+                    : undefined
+                }
+              />
             </div>
           ))
         )}
@@ -131,6 +144,7 @@ export default async function GoalsPage() {
                 goal={goal}
                 dateLabel={goalDateLabel(goal)}
                 showResultLabel
+                checkins={checkins.filter((c) => c.goalId === goal.id)}
               />
             </div>
           ))

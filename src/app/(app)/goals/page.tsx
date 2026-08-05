@@ -1,6 +1,6 @@
 import GoalItem from "@/components/GoalItem";
 import { addGoal, addMonthlyGoal } from "@/app/actions";
-import { formatJa, formatMonthJa, todayJst } from "@/lib/dates";
+import { addDays, formatJa, formatMonthJa, todayJst } from "@/lib/dates";
 import { getAllGoals, getCheckinsForGoals } from "@/lib/queries";
 import type { Goal } from "@/db/schema";
 
@@ -62,7 +62,7 @@ export default async function GoalsPage() {
           <input
             type="date"
             name="targetDate"
-            defaultValue={today}
+            defaultValue={addDays(today, 1)}
             required
             className="field sm:max-w-44"
           />

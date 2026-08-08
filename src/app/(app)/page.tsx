@@ -1,25 +1,17 @@
 import EntryForm from "@/components/EntryForm";
 import GoalItem from "@/components/GoalItem";
 import { formatJa, todayJst } from "@/lib/dates";
-import {
-  getCheckinsForGoals,
-  getEntryByDate,
-  getGoalsByDate,
-  getMonthlyGoals,
-  getStreak,
-} from "@/lib/queries";
+import { getEntryByDate, getGoalsByDate, getStreak } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function TodayPage() {
   const today = todayJst();
-  const [entry, streak, todaysGoals, monthlyGoals] = await Promise.all([
+  const [entry, streak, todaysGoals] = await Promise.all([
     getEntryByDate(today),
     getStreak(),
     getGoalsByDate(today),
-    getMonthlyGoals(today.slice(0, 7)),
   ]);
-  const checkins = await getCheckinsForGoals(monthlyGoals.map((g) => g.id));
 
   return (
     <div className="space-y-8">
@@ -38,25 +30,6 @@ export default async function TodayPage() {
           </p>
         </div>
       </div>
-
-      {monthlyGoals.length > 0 && (
-        <section className="card px-6 py-5 rise rise-1 border-l-2 border-l-kin">
-          <h3 className="font-display font-bold tracking-wider mb-3 stamp-dot">
-            今月の目標
-          </h3>
-          <ul className="space-y-3">
-            {monthlyGoals.map((goal) => (
-              <li key={goal.id}>
-                <GoalItem
-                  goal={goal}
-                  checkins={checkins.filter((c) => c.goalId === goal.id)}
-                  todayDate={today}
-                />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
 
       {todaysGoals.length > 0 && (
         <section className="card px-6 py-5 rise rise-1 border-l-2 border-l-shu">
